@@ -1,4 +1,10 @@
 #include <stdio.h>
+#include <string>
+
+/*class Request {
+public:
+	string Message;
+}*/
 
 class Middleware {
 public:
@@ -25,6 +31,45 @@ private:
 	bool hasNext;
 };
 
+class ControllerFirstMiddleware : public Middleware {
+	public:
+	ControllerFirstMiddleware(){}
+	void Invoke(){
+		printf("Hi from controller\n");
+		Next();
+		printf("Bye from controller\n");
+	}
+};
+
+class Controller {
+public:
+	Controller(Middleware &t){
+		this->target = &t;
+		ControllerFirstMiddleware cfm;
+		this->SetFirst(cfm);
+		this->SetLast(cfm);
+		this->last->SetNext(t);
+	}
+	void SetFirst(Middleware &m){
+		this->first = &m;
+	}
+	void SetLast(Middleware &m){
+		this->first = &m;
+	}
+	void Add(Middleware &middleware){
+		this->last->SetNext(middleware);
+		this->SetLast(middleware);
+		middleware.SetNext(*(this->target));
+	}
+	void Invoke(){
+		this->first->Invoke();
+	}
+private:
+	Middleware *first;
+	Middleware *last;
+	Middleware *target;
+};
+
 class MyMiddleWare1 : public Middleware {
 public:
 	MyMiddleWare1(){}
@@ -48,8 +93,9 @@ public:
 int main(int argc, char *argv[]){
 	MyMiddleWare1 mm1;
 	MyMiddleWare2 mm2;
-	mm1.SetNext(mm2);
-	mm1.Invoke();
+	Controller controller(mm2); // the target
+	controller.Add(mm1); // insert the others
+	controller.Invoke(); // invoke the controller's first middleware
 	return 0;
 };
 
