@@ -1,73 +1,70 @@
 #include <stdio.h>
-#include <string>
-
-/*class Request {
-public:
-	string Message;
-}*/
 
 class Middleware {
 public:
 	Middleware()
 	{
 		hasNext = false;
+		rindex = 0;
 	};
+	void Append(Middleware &last){
+		rindex++;
+		if(hasNext){
+			next->Append(last);
+		}
+		else {
+			this->SetNext(last);
+		}
+	}
+	void InsertBeforeLast(Middleware &penultimate){
+		bool isBeforePenultimate = rindex > 1;
+		rindex++;
+		if(isBeforePenultimate){
+			next->InsertBeforeLast(penultimate);
+		}
+		else {
+			penultimate.Append(*next);
+			this->SetNext(penultimate);
+		}
+	}
+	void Next(){
+		if(hasNext){
+			next->Invoke();
+		}
+	}
+	bool HasNext(){ return hasNext; }
+	virtual void Invoke() = 0;
+private:
+	Middleware *next;
+	int rindex;
+	bool hasNext;
 	void SetNext(Middleware &next){
 		this->next = &next;
 		hasNext = true;
 	}
-	void Next(){
-		if(hasNext){
-			printf("Running next...\n");
-			next->Invoke();
-		}
-		else {
-			printf("No more nexts.\n");
-		}
-	}
-	virtual void Invoke() = 0;
-private:
-	Middleware *next;
-	bool hasNext;
 };
 
-class ControllerFirstMiddleware : public Middleware {
+class Handler : public Middleware {
 	public:
-	ControllerFirstMiddleware(){}
-	void Invoke(){
-		printf("Hi from controller\n");
-		Next();
-		printf("Bye from controller\n");
-	}
+	Handler(){}
+	void Next(){throw "Next is not implemented in Handler base.";}
+	virtual void Invoke() = 0;
 };
 
-class Controller {
-public:
-	Controller(Middleware &t){
-		this->target = &t;
-		ControllerFirstMiddleware cfm;
-		this->SetFirst(cfm);
-		this->SetLast(cfm);
-		this->last->SetNext(t);
-	}
-	void SetFirst(Middleware &m){
-		this->first = &m;
-	}
-	void SetLast(Middleware &m){
-		this->first = &m;
+class Controller : public Middleware {
+	public:
+	Controller(Middleware &handler){
+		Append(handler);
 	}
 	void Add(Middleware &middleware){
-		this->last->SetNext(middleware);
-		this->SetLast(middleware);
-		middleware.SetNext(*(this->target));
+		InsertBeforeLast(middleware);
 	}
+	
 	void Invoke(){
-		this->first->Invoke();
-	}
-private:
-	Middleware *first;
-	Middleware *last;
-	Middleware *target;
+		printf("Hi from Controller\n");
+		Next();
+		printf("Bye from Controller\n");
+	};
 };
 
 class MyMiddleWare1 : public Middleware {
@@ -90,12 +87,35 @@ public:
 	};
 };
 
+class MyMiddleWare3 : public Middleware {
+public:
+	MyMiddleWare3(){}
+	void Invoke(){
+		printf("Hi from 3\n");
+		Next();
+		printf("Bye from 3\n");
+	};
+};
+
+class MyHandler : public Handler {
+public:
+	MyHandler(){}
+	void Invoke(){
+		printf("Hi, bye - from handler\n");
+	};
+};
+
 int main(int argc, char *argv[]){
 	MyMiddleWare1 mm1;
 	MyMiddleWare2 mm2;
-	Controller controller(mm2); // the target
-	controller.Add(mm1); // insert the others
-	controller.Invoke(); // invoke the controller's first middleware
+	MyMiddleWare3 mm3;
+	MyHandler handler;
+	Controller c(handler);
+	
+	c.Add(mm1);
+	c.Add(mm2);
+	c.Add(mm3);
+	c.Invoke();
+	
 	return 0;
 };
-
