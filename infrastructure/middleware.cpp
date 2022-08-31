@@ -1,121 +1,56 @@
 #include <stdio.h>
 
-class Middleware {
-public:
-	Middleware()
-	{
-		hasNext = false;
-		rindex = 0;
-	};
-	void Append(Middleware &last){
-		rindex++;
-		if(hasNext){
-			next->Append(last);
-		}
-		else {
-			this->SetNext(last);
-		}
-	}
-	void InsertBeforeLast(Middleware &penultimate){
-		bool isBeforePenultimate = rindex > 1;
-		rindex++;
-		if(isBeforePenultimate){
-			next->InsertBeforeLast(penultimate);
-		}
-		else {
-			penultimate.Append(*next);
-			this->SetNext(penultimate);
-		}
-	}
-	void Next(){
-		if(hasNext){
-			next->Invoke();
-		}
-	}
-	bool HasNext(){ return hasNext; }
-	virtual void Invoke() = 0;
-private:
-	Middleware *next;
-	int rindex;
-	bool hasNext;
-	void SetNext(Middleware &next){
-		this->next = &next;
-		hasNext = true;
-	}
-};
+#include "middleware.h";
 
-class Handler : public Middleware {
-	public:
-	Handler(){}
-	void Next(){throw "Next is not implemented in Handler base.";}
-	virtual void Invoke() = 0;
+Middleware::Middleware()
+{
+    hasNext = false;
+    rindex = 0;
 };
+void Middleware::Append(Middleware &last){
+    rindex++;
+    if(hasNext){
+        next->Append(last);
+    }
+    else {
+        this->SetNext(last);
+    }
+}
+void Middleware::InsertBeforeLast(Middleware &penultimate){
+    bool isBeforePenultimate = rindex > 1;
+    rindex++;
+    if(isBeforePenultimate){
+        next->InsertBeforeLast(penultimate);
+    }
+    else {
+        penultimate.Append(*next);
+        this->SetNext(penultimate);
+    }
+}
+void Middleware::Next(){
+    if(hasNext){
+        next->Invoke();
+    }
+}
+bool Middleware::HasNext(){ return hasNext; }
+void Middleware::SetNext(Middleware &next){
+    this->next = &next;
+    hasNext = true;
+}
 
-class Controller : public Middleware {
-	public:
-	Controller(Middleware &handler){
-		Append(handler);
-	}
-	void Add(Middleware &middleware){
-		InsertBeforeLast(middleware);
-	}
-	
-	void Invoke(){
-		printf("Hi from Controller\n");
-		Next();
-		printf("Bye from Controller\n");
-	};
-};
+Handler::Handler(){}
+void Handler::Next(){throw "Next is not implemented in Handler base.";}
 
-class MyMiddleWare1 : public Middleware {
-public:
-	MyMiddleWare1(){}
-	void Invoke(){
-		printf("Hi from 1\n");
-		Next();
-		printf("Bye from 1\n");
-	};
-};
+Controller::Controller(Middleware &handler){
+    Append(handler);
+}
+void Controller::Add(Middleware &middleware){
+    InsertBeforeLast(middleware);
+}
 
-class MyMiddleWare2 : public Middleware {
-public:
-	MyMiddleWare2(){}
-	void Invoke(){
-		printf("Hi from 2\n");
-		Next();
-		printf("Bye from 2\n");
-	};
-};
+void Controller::Invoke(){
+    printf("Hi from Controller\n");
+    Next();
+    printf("Bye from Controller\n");
+}
 
-class MyMiddleWare3 : public Middleware {
-public:
-	MyMiddleWare3(){}
-	void Invoke(){
-		printf("Hi from 3\n");
-		Next();
-		printf("Bye from 3\n");
-	};
-};
-
-class MyHandler : public Handler {
-public:
-	MyHandler(){}
-	void Invoke(){
-		printf("Hi, bye - from handler\n");
-	};
-};
-
-int main(int argc, char *argv[]){
-	MyMiddleWare1 mm1;
-	MyMiddleWare2 mm2;
-	MyMiddleWare3 mm3;
-	MyHandler handler;
-	Controller c(handler);
-	
-	c.Add(mm1);
-	c.Add(mm2);
-	c.Add(mm3);
-	c.Invoke();
-	
-	return 0;
-};
