@@ -27,22 +27,41 @@ print STDERR "$A\n";
 #my $Rate = 8000;
 my $Rate = 44100; # use aplay -r 44100
 my $bpm = 140;
+my $vibfreq = 10; 
+my $vibdepth = 0.001;
 
 my @music = (
-    note($A, 4, 1, $Rate, $bpm ),
-    note($C, 4, 1, $Rate, $bpm ),
-    note($E, 12, 1, $Rate, $bpm ),
-    note($C, 12, 1, $Rate, $bpm ),
-    note($E, 12, 1, $Rate, $bpm ),
-    note($Ab, 2, 1, $Rate, $bpm ),
-    note($Ab, 4, 0, $Rate, $bpm ),
+    note($A, 4, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($C, 4, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($E, 12, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($C, 12, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($E, 12, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($Ab, 2, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($Ab, 4, 0, $Rate, $bpm, $vibfreq, $vibdepth),
 );
 
 FormatTester($Rate, "U8", \&FormatU8, @music);
-FormatTester($Rate, "S16_LE", \&FormatS16, @music);
+
+sub vibrato { # not nice vib, but a cool effect?
+    my ($f, $depth, $samplerate, @music) = @_;
+    my $samplesPerCycle = int($samplerate/$f);
+    for(my $w = 0; $w < @music-$samplesPerCycle; $w += $samplesPerCycle){
+        for(my $i = 1; $i < $samplesPerCycle/2; $i+=$samplesPerCycle/$depth){
+            my $j = $i + $w;
+            my $p = $samplesPerCycle - $i + $w;
+            my $k = $j + 1;
+            my $q = $p + 1;
+            @music[$j..$p] = @music[$k..$q];
+            # try to smooth...
+            @music[$q] = (@music[$p] + @music[$q+1])/2;
+            @music[$j] = (@music[$k] + @music[$j-1])/2;
+        }
+    }
+    return (@music);
+}
 
 sub note {
-    my ($f, $len, $vol, $rate, $bpm) = @_;
+    my ($f, $len, $vol, $rate, $bpm, $vibfreq, $vibdepth) = @_;
 
     my $spb = 60/$bpm; # seconds per beat
     my $bpn = 4; # beats per whole-note (semi-breve?)
@@ -62,8 +81,12 @@ sub note {
     ## Synthesis
     foreach (1..$nsamples){ 
         my $p = $_ / $nsamples; # proportion of the way through the note
+        my $t = $p * $length_seconds;
         my $z = $p * pi; # do something with it
-        my $x = $_ * 2 * pi * $f / $rate; # time, basically
+
+        my $fm = $f * (1 + $vibdepth*sin(2 * pi * $t * $vibfreq));
+        
+        my $x = $_ * 2 * pi * $fm / $rate; # time, basically
         my $y = $vol * sin($x) * sin($z);
         push @y, $y;
     }

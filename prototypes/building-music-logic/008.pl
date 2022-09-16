@@ -27,22 +27,38 @@ print STDERR "$A\n";
 #my $Rate = 8000;
 my $Rate = 44100; # use aplay -r 44100
 my $bpm = 140;
+my $vibfreq = 10; 
+my $vibdepth = 0.001;
 
 my @music = (
-    note($A, 4, 1, $Rate, $bpm ),
-    note($C, 4, 1, $Rate, $bpm ),
-    note($E, 12, 1, $Rate, $bpm ),
-    note($C, 12, 1, $Rate, $bpm ),
-    note($E, 12, 1, $Rate, $bpm ),
-    note($Ab, 2, 1, $Rate, $bpm ),
-    note($Ab, 4, 0, $Rate, $bpm ),
+    note($A, 4, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($C, 4, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($E, 12, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($C, 12, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($E, 12, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($Ab, 2, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($Ab, 4, 0, $Rate, $bpm, $vibfreq, $vibdepth),
 );
 
-FormatTester($Rate, "U8", \&FormatU8, @music);
-FormatTester($Rate, "S16_LE", \&FormatS16, @music);
+my @musicTwice = (@music, @music);
+
+my @musicLong = (
+    note($A, 2, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($C, 2, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($E, 6, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($C, 6, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($E, 6, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($Ab, 1, 1, $Rate, $bpm, $vibfreq, $vibdepth),
+    note($Ab, 2, 0, $Rate, $bpm, $vibfreq, $vibdepth),
+);
+
+my @mix = level(0.4, mix(\@musicTwice, \@musicLong));
+
+
+FormatTester($Rate, "U8", \&FormatU8, @mix);
 
 sub note {
-    my ($f, $len, $vol, $rate, $bpm) = @_;
+    my ($f, $len, $vol, $rate, $bpm, $vibfreq, $vibdepth) = @_;
 
     my $spb = 60/$bpm; # seconds per beat
     my $bpn = 4; # beats per whole-note (semi-breve?)
@@ -62,13 +78,38 @@ sub note {
     ## Synthesis
     foreach (1..$nsamples){ 
         my $p = $_ / $nsamples; # proportion of the way through the note
+        my $t = $p * $length_seconds;
         my $z = $p * pi; # do something with it
-        my $x = $_ * 2 * pi * $f / $rate; # time, basically
+
+        my $fm = $f * (1 + $vibdepth*sin(2 * pi * $t * $vibfreq));
+        
+        my $x = $_ * 2 * pi * $fm / $rate; # time, basically
         my $y = $vol * sin($x) * sin($z);
         push @y, $y;
     }
     print "start: $y[0]; end: $y[$#y]\n";
     return @y;
+}
+
+sub level {
+    my $l = shift;
+    return map {$_ * $l} @_;
+}
+
+sub mix {
+    my $L = 0;
+    foreach(@_){
+        my $l = @{$_};
+        $L = $l if $l > $L;
+    }
+    my @mix = map {0} (1..$L);
+    for(my $i = 0; $i < $L; $i++){
+        foreach(@_){
+            my $v = defined $_->[$i] ? $_->[$i] : 0;
+            $mix[$i] += $v;
+        }
+    }
+    return @mix;
 }
 
 sub FormatTester {
