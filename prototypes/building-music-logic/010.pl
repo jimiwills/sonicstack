@@ -59,6 +59,7 @@ my @mix = mix(
 
 FormatTester($Rate, "U8 -c 2", \&FormatU8, compress(@mix)); # compression definitely stops clipping, but also changes the tone
 FormatTester($Rate, "U8 -c 2", \&FormatU8, @mix);
+FormatTester($Rate, "U8 -c 2", \&FormatU8, level(0.3, compress(level(4, @mix)))); # this is quite nice!
 
 sub note {
     my ($f, $len, $vol, $rate, $bpm, $vibfreq, $vibdepth) = @_;
