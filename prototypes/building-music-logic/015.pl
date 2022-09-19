@@ -41,6 +41,10 @@ my @drum = note(100, 4, 1, $Rate, $bpm, 1, 0, $freqpower);
 
 FormatTester($Rate, "U8", \&FormatU8, @drum);
 
+my @rdrum = reverb(0.5, 0.2, 64, $Rate, $bpm, @drum);
+
+FormatTester($Rate, "U8 -c 2", \&FormatU8, @rdrum);
+
 
 my $chorusfreq = 4;
 my %noteDefs = ('A' => $A, 'C' => $C, 'E' => $E, 'Ab' => $Ab);
@@ -67,7 +71,7 @@ my $delay_level = 0.6;
 my @music4 = delay($delay_level, 2, $Rate, $bpm, @music2);
 my @music5 = delay($delay_level, 1, $Rate, $bpm, @music2);
 
-my @mix = mix(
+@mix = mix(
     {'music' => \@music2, 'pan' => 0, 'level' => 0.4},
     {'music' => \@music4, 'pan' => 1, 'level' => 0.4},
     {'music' => \@music5, 'pan' => -1, 'level' => 0.4}, 
@@ -78,7 +82,7 @@ my @mix = mix(
 my $echo_feedback = 0.4;
 my @music6 = echo($echo_feedback, 7, $Rate, $bpm, pad(1, $Rate, $bpm, level(0.5, @music2)));
 
-FormatTester($Rate, "U8", \&FormatU8, @music6);
+#FormatTester($Rate, "U8", \&FormatU8, @music6);
 
 
 sub notes {
@@ -287,6 +291,19 @@ sub envelope {
     # where p, q, r, s are shape functions.
     # a nice thing would be to combine note 1 with the second term here by multiplication, thus getting the desired attack, sustain and decay
 
+    my ($attackFreq, $attackLevel, $len, $rate, $bpm, @music) = @_;
+    my ($length_seconds, $nsamples) = notelength($len, $bpm, $rate);
+
+    foreach (1..$nsamples){
+        
+        my $sustain = sin($_)**(2/$attackFreq);
+        my $attack = sin($_*$attackFreq);
+    }
+
+
+    # sustain can be a sin**(1/p) half-wave ... where p is the attack freq/2 (see tanh.ods)
+    
+    #  sin**(1/p) and sin(p*2) appear to have the same gradient though zero, so are good to sum
 
 }
 
@@ -339,9 +356,24 @@ sub reverb {
     # unlike echo, this will be like multiple delay hitting different pans each time.
     my ($feedback, $pan, $len, $rate, $bpm, @music) = @_;
 
+    my @tracks = ({'music' => \@music, 'pan' => $pan, 'level' => 0.4});
+
+    my @delay = @music;
+
+    foreach(1..10){
+        my $sign = $pan/(abs($pan));
+        $pan = -1*$sign*sqrt(abs($pan));
+        @delay = delay($feedback, $len, $rate, $bpm, @delay);
+        push @tracks, {'music' => \@delay, 'pan' => $pan, 'level' => 1};
+    }
+
+    return @mix = mix(@tracks);
 }
 
-
+sub wrapPan {
+    my ($panVal) = @_;
+    return (($panVal+1)%2)-1;
+}
 
 
 
