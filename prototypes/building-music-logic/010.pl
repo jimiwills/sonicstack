@@ -53,13 +53,15 @@ my @musicLong = (
 );
 
 my @mix = mix(
-    {'music' => \@musicTwice, 'pan' => -1, 'level' => 0.4},
-    {'music' => \@musicLong, 'pan' => 0.7, 'level' => 0.3}, 
+    {'music' => \@musicTwice, 'pan' => -1, 'level' => 0.9},
+    {'music' => \@musicLong, 'pan' => 0.7, 'level' => 0.7}, 
 );
 
-FormatTester($Rate, "U8 -c 2", \&FormatU8, compress(@mix)); # compression definitely stops clipping, but also changes the tone
+#FormatTester($Rate, "U8 -c 2", \&FormatU8, compress(@mix)); # compression definitely stops clipping, but also changes the tone
+FormatTester($Rate, "U8 -c 2", \&FormatU8, level(1, compressA(level(2, @mix)))); # this clips with atan
+FormatTester($Rate, "U8 -c 2", \&FormatU8, level(1, compressH(level(2, @mix)))); # tanh this is quite nice!
 FormatTester($Rate, "U8 -c 2", \&FormatU8, @mix);
-FormatTester($Rate, "U8 -c 2", \&FormatU8, level(0.3, compress(level(4, @mix)))); # this is quite nice!
+
 
 sub note {
     my ($f, $len, $vol, $rate, $bpm, $vibfreq, $vibdepth) = @_;
@@ -122,8 +124,12 @@ sub mix {
     return @mix;
 }
 
-sub compress {
+sub compressA {
     return map {atan $_} @_;
+}
+
+sub compressH {
+    return map {tanh $_} @_;
 }
 
 sub FormatTester {
