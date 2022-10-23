@@ -7,16 +7,32 @@
 class Generator {
 	public:
 	int rate;
+	float freqpower = 1/2;
+	float vibdepth = 1/50;
+	float vibfreq = 10;
+	float vol = 1;
+	
 	int generate(float length, int freq, unsigned char* buffer, int start){
 		int W = rate/(float)freq;
 		int L = length * (float) rate;
-		
-		// TODO: force a whole number of waves into the time
-		
-		// ALSO TODO: copy the maths from buidling-music-logic/* into here
+		// force a whole number of waves into the time
+		int cycles = length * (float)freq;
+		float f = (float)cycles/length;
 		
 		for(int i=0; i<L; i++){
-			buffer[start+i] = (unsigned char) ((sin(2*PI*freq* i/rate)+1)/2*255.0);
+			float p = i/L; // proportion of the way through the note
+			p = pow(p, freqpower);
+			float t = p * length;
+			float z = 1.0; // but could be p * PI for sin envelope
+			
+			float fm = f * (1.0 + vibdepth*sin(2.0*PI*t*vibfreq));
+			
+			float c = p * L;
+			float x = 2.0*PI*fm*(float)i/rate;
+			float y = vol * sin(x) * sin(z);
+			buffer[start+i] = (unsigned char) (y+1)/2.0*255.0; 
+			// TODO: move the conversion to the renderer 
+			// (because post-processing expects -1 < x < 1 )
 		}
 		return start+L;
 	}
