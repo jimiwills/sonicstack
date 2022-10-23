@@ -11,7 +11,7 @@ class Generator {
 		int W = rate/(float)freq;
 		int L = length * (float) rate;
 		for(int i=0; i<L; i++){
-			buffer[i] = (unsigned char) sin(2*PI*freq* i/rate)*255.0;
+			buffer[i] = (unsigned char) ((sin(2*PI*freq* i/rate)+1)/2*255.0);
 		}
 		return L;
 	}
